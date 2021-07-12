@@ -1,5 +1,5 @@
 [package]
-name = "programmable_ships"
+name = "staws"
 version = "0.1.0"
 authors = ["ethan"]
 edition = "2018"
