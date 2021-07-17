@@ -140,13 +140,52 @@ pub mod systems {
 
     use super::components::*;
 
+    pub fn set_px(texture: &mut Texture, x: u32, y: u32, r: u8, g: u8, b: u8) {
+        let i = (x + y * texture.size.width) as usize;
+        texture.data[i*4 + 0] = r;
+        texture.data[i*4 + 1] = g;
+        texture.data[i*4 + 2] = b;
+        texture.data[i*4 + 3] = 255;
+    }
+
     pub fn setup_system(
         mut commands: Commands,
         mut materials: ResMut<Assets<ColorMaterial>>,
+        mut textures: ResMut<Assets<Texture>>,
         asset_server: ResMut<AssetServer>,
     ) {
+
+        let width = 1000;
+        let height = 1000;
+        let planet_texture_data: Vec<u8> = vec![0; width*height*4];
+
+        let mut planet_texture = Texture {
+            data: planet_texture_data,
+            format: bevy::render::texture::TextureFormat::Rgba8UnormSrgb,
+            size: bevy::render::texture::Extent3d::new(width as u32,height as u32,1),
+            dimension: bevy::render::texture::TextureDimension::D2,
+            ..Default::default()
+        };
+
+        let width = width as i32;
+        let height = height as i32;
+        for x in -(width/2)..(width/2) {
+            for y in -(height/2)..(height/2) {
+                let (x, y) = (x as f32, y as f32);
+                let r = (x.powi(2) + y.powi(2)).sqrt();
+                let radius = (width/2) as f32;
+
+                if r > radius-5.0 && r < radius  {
+                    let x = (x as i32 + width/2) as u32;
+                    let y = (y as i32 + height/2) as u32;
+                    set_px(&mut planet_texture, x, y, 0, 255, 0);
+                }
+            }
+        }
+
         let ship_texture: Handle<Texture> = asset_server.load("../assets/ship_1.png");
-        let planet_texture: Handle<Texture> = asset_server.load("../assets/DustPlanet.png");
+        let planet_texture: Handle<Texture> = asset_server.load("../assets/planet.png");
+        //let planet_texture: Handle<Texture> = textures.add(planet_texture);
 
         let ship_material = ColorMaterial {
             color: Color::rgb(1.0, 1.0, 1.0),
@@ -154,7 +193,7 @@ pub mod systems {
         };
 
         let planet_material = ColorMaterial {
-            color: Color::rgb(1.0, 1.0, 1.0),
+            color: Color::rgb(0.0, 1.0, 0.0),
             texture: Some(planet_texture),
         };
 
@@ -199,7 +238,7 @@ pub mod systems {
                 p.spawn_bundle(SpriteBundle {
                     sprite: Sprite::new(Vec2::new(20.0, 20.0)),
                     material: planet_material.clone(),
-                    transform: Transform::from_scale(Vec3::new(1.0, 1.0, 0.0)),
+                    transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
                     ..Default::default()
                 });
             });
@@ -218,7 +257,7 @@ pub mod systems {
                 p.spawn_bundle(SpriteBundle {
                     sprite: Sprite::new(Vec2::new(20.0, 20.0)),
                     material: planet_material.clone(),
-                    transform: Transform::from_scale(Vec3::new(1.0, 1.0, 0.0)),
+                    transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
                     ..Default::default()
                 });
             });
@@ -319,28 +358,44 @@ pub mod systems {
         })
     }
 
+    use bevy::render::camera::VisibleEntities;
     pub fn user_interface_system(
-        cam_query: Query<(&mut OrthographicProjection, &mut Transform, &mut Camera)>,
+        cam_query: Query<(&mut OrthographicProjection, &mut Transform, &mut Camera, &mut VisibleEntities)>,
+        mut transform_query: Query<&mut Transform, (With<Sprite>, Without<Camera>)>,
         mouse_state: Res<Input<MouseButton>>,
         mut motion_evr: EventReader<MouseMotion>,
         mut wheel_evr: EventReader<MouseWheel>,
     ) {
         // handle zooming when the user scrolls
         for event in wheel_evr.iter() {
-            cam_query.for_each_mut(|(mut op, _t, mut c)| {
-                // make sure we are using the right camera
-                if c.name != Some(bevy::render::render_graph::base::camera::CAMERA_2D.to_string()) {
+            cam_query.for_each_mut(|(mut ortho, _transform, mut camera, mut entities)| {
+                // filter out extraneous cameras
+                if camera.name != Some(bevy::render::render_graph::base::camera::CAMERA_2D.to_string()) {
                     return;
                 }
-
-                op.far += (1000.0 / (0.1 * event.y)).abs();
-                op.scale += -0.1 * event.y;
-                c.projection_matrix = op.get_projection_matrix();
+                
+                const ZOOM_SPEED: f32 = 0.1;
+                let scale_difference = (10.0 as f32).powf(event.y as f32 * ZOOM_SPEED);
+                
+                // adjust camera scaling
+                ortho.far += (1000.0 / (0.1 * event.y)).abs();
+                ortho.scale *= scale_difference;
+                camera.projection_matrix = ortho.get_projection_matrix();
+                
+                // scale visible entities
+                for e in entities.value.iter_mut() {
+                    match transform_query.get_component_mut::<Transform>(e.entity) {
+                        Ok(mut t) => {
+                            t.scale *= Vec3::ONE * scale_difference;
+                        },
+                        Err(_) => (),
+                    };
+                }
             });
         }
 
         // handle paning when the user middle clicks and drags
-        cam_query.for_each_mut(|(op, mut t, c)| {
+        cam_query.for_each_mut(|(op, mut t, c, _e)| {
             // make sure we are using the right camera
             if c.name != Some(bevy::render::render_graph::base::camera::CAMERA_2D.to_string()) {
                 return;
