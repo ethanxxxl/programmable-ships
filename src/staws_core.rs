@@ -5,7 +5,7 @@ pub mod components {
     /// while the game is 2D, the z dimension in the velocity and
     ///  acceleration fields will be either ignored or 0.
     ///  if/when the game becomes 3D, this will provide an easy transition.
-    #[derive(Inspectable, Default)]
+    #[derive(Inspectable, Default, Clone, Copy)]
     pub struct Kinimatics {
         // kinimatic stuff
         #[inspectable(label = "v")]
@@ -71,7 +71,7 @@ pub mod components {
      *  be on the range [0,1]. Values that fall outside this range
      *  do not have any phyisical meaning.
      */
-    #[derive(Inspectable)]
+    #[derive(Inspectable, Clone, Copy)]
     pub enum Throttle {
         Fixed(bool),
         Variable(f32),
@@ -83,7 +83,7 @@ pub mod components {
         }
     }
 
-    #[derive(Inspectable, Default)]
+    #[derive(Inspectable, Default, Clone, Copy)]
     pub struct Engine {
         pub fuel: f32,
         pub max_thrust: f32, // units of force
@@ -128,64 +128,43 @@ pub mod components {
         #[bundle]
         pub kinimatics_bundle: KinimaticsBundle,
     }
+
+    pub struct ProjectionDot;
+
+    #[derive(Bundle)]
+    pub struct ProjectionDotBundle {
+        pub projection_dot: ProjectionDot,
+
+        #[bundle]
+        pub sprite: SpriteBundle,
+    }
 }
 
 pub mod systems {
     use bevy::{
         input::mouse::{MouseButton, MouseMotion, MouseWheel},
         prelude::*,
-        render::camera::{Camera, CameraProjection, OrthographicProjection},
+        render::camera::{Camera, CameraProjection, OrthographicProjection, VisibleEntities},
     };
     //use bevy_inspector_egui::{Inspectable, WorldInspectorPlugin};
 
     use super::components::*;
 
-    pub fn set_px(texture: &mut Texture, x: u32, y: u32, r: u8, g: u8, b: u8) {
-        let i = (x + y * texture.size.width) as usize;
-        texture.data[i*4 + 0] = r;
-        texture.data[i*4 + 1] = g;
-        texture.data[i*4 + 2] = b;
-        texture.data[i*4 + 3] = 255;
+    #[derive(Clone)]
+    pub struct SpriteResource {
+        pub planet: SpriteBundle,
+        pub ship: SpriteBundle,
+        pub projection_dot: SpriteBundle,
     }
 
     pub fn setup_system(
         mut commands: Commands,
         mut materials: ResMut<Assets<ColorMaterial>>,
-        mut textures: ResMut<Assets<Texture>>,
         asset_server: ResMut<AssetServer>,
     ) {
-
-        let width = 1000;
-        let height = 1000;
-        let planet_texture_data: Vec<u8> = vec![0; width*height*4];
-
-        let mut planet_texture = Texture {
-            data: planet_texture_data,
-            format: bevy::render::texture::TextureFormat::Rgba8UnormSrgb,
-            size: bevy::render::texture::Extent3d::new(width as u32,height as u32,1),
-            dimension: bevy::render::texture::TextureDimension::D2,
-            ..Default::default()
-        };
-
-        let width = width as i32;
-        let height = height as i32;
-        for x in -(width/2)..(width/2) {
-            for y in -(height/2)..(height/2) {
-                let (x, y) = (x as f32, y as f32);
-                let r = (x.powi(2) + y.powi(2)).sqrt();
-                let radius = (width/2) as f32;
-
-                if r > radius-5.0 && r < radius  {
-                    let x = (x as i32 + width/2) as u32;
-                    let y = (y as i32 + height/2) as u32;
-                    set_px(&mut planet_texture, x, y, 0, 255, 0);
-                }
-            }
-        }
-
         let ship_texture: Handle<Texture> = asset_server.load("../assets/ship_1.png");
         let planet_texture: Handle<Texture> = asset_server.load("../assets/planet.png");
-        //let planet_texture: Handle<Texture> = textures.add(planet_texture);
+        let projection_dot_texture: Handle<Texture> = asset_server.load("../assets/dot.png");
 
         let ship_material = ColorMaterial {
             color: Color::rgb(1.0, 1.0, 1.0),
@@ -197,8 +176,37 @@ pub mod systems {
             texture: Some(planet_texture),
         };
 
-        let planet_material = materials.add(planet_material);
+        let projection_dot_material = ColorMaterial {
+            color: Color::rgb_u8(199, 199, 199),
+            texture: Some(projection_dot_texture),
+        };
 
+        let ship_material = materials.add(ship_material);
+        let planet_material = materials.add(planet_material);
+        let projection_dot_material = materials.add(projection_dot_material);
+
+        let sprite_resource = SpriteResource {
+            planet: SpriteBundle {
+                sprite: Sprite::new(Vec2::new(20.0, 20.0)),
+                material: planet_material.clone(),
+                transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
+                ..Default::default()
+            },
+            ship: SpriteBundle {
+                sprite: Sprite::new(Vec2::new(20.0, 20.0)),
+                material: ship_material.clone(),
+                transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
+                ..Default::default()
+            },
+            projection_dot: SpriteBundle {
+                sprite: Sprite::new(Vec2::new(2.0, 2.0)),
+                material: projection_dot_material.clone(),
+                transform: Transform::from_scale(Vec3::new(0.15, 0.15, 0.0)),
+                ..Default::default()
+            },
+        };
+
+        commands.insert_resource(sprite_resource.clone());
         commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 
         // Add a ship
@@ -216,12 +224,7 @@ pub mod systems {
             })
             .insert(Controlled {})
             .with_children(|p| {
-                p.spawn_bundle(SpriteBundle {
-                    sprite: Sprite::new(Vec2::new(10.0, 10.0)),
-                    material: materials.add(ship_material),
-                    transform: Transform::from_scale(Vec3::new(1.8, 2.0, 0.0)),
-                    ..Default::default()
-                });
+                p.spawn_bundle(sprite_resource.ship.clone());
             });
 
         // Add a planet
@@ -235,12 +238,7 @@ pub mod systems {
                 ..Default::default()
             })
             .with_children(|p| {
-                p.spawn_bundle(SpriteBundle {
-                    sprite: Sprite::new(Vec2::new(20.0, 20.0)),
-                    material: planet_material.clone(),
-                    transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
-                    ..Default::default()
-                });
+                p.spawn_bundle(sprite_resource.planet.clone());
             });
 
         // Add a planet
@@ -254,12 +252,7 @@ pub mod systems {
                 ..Default::default()
             })
             .with_children(|p| {
-                p.spawn_bundle(SpriteBundle {
-                    sprite: Sprite::new(Vec2::new(20.0, 20.0)),
-                    material: planet_material.clone(),
-                    transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
-                    ..Default::default()
-                });
+                p.spawn_bundle(sprite_resource.planet.clone());
             });
     }
 
@@ -358,7 +351,6 @@ pub mod systems {
         })
     }
 
-    use bevy::render::camera::VisibleEntities;
     pub fn user_interface_system(
         cam_query: Query<(&mut OrthographicProjection, &mut Transform, &mut Camera, &mut VisibleEntities)>,
         mut transform_query: Query<&mut Transform, (With<Sprite>, Without<Camera>)>,
@@ -407,6 +399,126 @@ pub mod systems {
                 });
             }
         })
+    }
+
+    pub fn course_projection_system(
+        mut commands: Commands,
+        k_bods: Query<(&Kinimatics, &Transform, Option<&Engine>), Without<ProjectionDot>>,
+        mut dots: Query<(Entity, &mut Transform), With<ProjectionDot>>,
+        sprites: Res<SpriteResource>,
+        ) {
+        // make a copy of all the entities
+        let mut entities: Vec<(Kinimatics, Transform, Option<Engine>)> = k_bods
+            .iter()
+            .map(|(kinimatics, transform, engine)| {
+                if let Some(e) = engine {
+                  return (kinimatics.clone(), transform.clone(), Some(e.clone()))
+                } else {
+                  return (kinimatics.clone(), transform.clone(), None)
+                }
+            })
+            .collect();
+
+        let num_seconds = 5; // number of seconds to look ahead
+        let step_precision = 10; // steps/second
+
+        let mut steps: Vec<Vec<Transform>> = Vec::new();
+        steps.reserve(num_seconds*step_precision);
+
+        // each element will have a corresponding entry in this list.
+        let num_bods = entities.iter().count();
+        let mut all_forces: Vec<Vec<Vec3>> = Vec::new();
+        all_forces.reserve(num_bods);
+
+        const GRAVITATIONAL_CONSTANT: f32 = 6.67430e-11;
+        for step in 0..num_seconds*step_precision {
+            // initialize a new vector for each k_bod
+            for _ in 0..num_bods {
+                all_forces.push(Vec::new());
+            }
+
+            let dt = 1.0/(step_precision as f32);
+
+            // calculate forces due to gravity
+            for (i, e1) in entities.iter().enumerate() {
+                // NOTE do I need to do bounds checking here?
+                entities
+                    .split_at(i + 1)
+                    .1
+                    .iter()
+                    .enumerate()
+                    .for_each(|(j, e2)| {
+                        // calculate magnitude of the force
+                        let force_mag = GRAVITATIONAL_CONSTANT * (e1.0.mass * e2.0.mass)
+                            / e1.1.translation.distance_squared(e2.1.translation);
+
+                        // calculate direction and magnitude of the forces for each object.
+                        let d1: Vec3 = (e2.1.translation - e1.1.translation).normalize() * force_mag;
+                        let d2 = (e1.1.translation - e2.1.translation).normalize() * force_mag;
+
+                        // add these forces to a list of forces
+                        all_forces[i].push(d1);
+                        all_forces[i + j + 1].push(d2);
+                    });
+            }
+
+            // create a new vector to hold this snapshot
+            steps.push(Vec::new());
+            // Calculate other forces and update kinimatics
+            for (i, (kin, tran, engine)) in entities.iter_mut().enumerate() {
+                // handle acceleration from ship engine
+                if let Some(t) = engine {
+                    all_forces[i].push(
+                        tran.rotation.mul_vec3(Vec3::Y)
+                            * match t.throttle {
+                                Throttle::Fixed(true) => t.max_thrust,
+                                Throttle::Fixed(false) => 0.0,
+                                Throttle::Variable(amount) => amount * t.max_thrust,
+                            },
+                    );
+                }
+
+                // add up forces, then apply them
+                kin.acceleration = all_forces[i]
+                    .iter()
+                    .copied()
+                    .reduce(|acc, x| acc + x)
+                    .expect("0 forces")
+                    / kin.mass;
+
+                kin.velocity = kin.velocity + kin.acceleration * dt;
+                tran.translation = tran.translation + kin.velocity * dt;
+
+                steps[step].push(tran.clone());
+            }
+        }
+
+        // total number of dots needed for projection
+        let total_dots = steps.len() * entities.len();
+        let available_dots = dots.iter_mut().count();
+
+        if available_dots > total_dots {
+            // remove extra dots
+            let mut dots = dots.iter_mut();
+            for _ in 0..(available_dots-total_dots) {
+                if let Some(d) = dots.next() { commands.entity(d.0).despawn(); }
+            }
+        } else if available_dots < total_dots {
+            // spawn in missing dots
+            for _ in 0..(total_dots-available_dots) {
+                commands.spawn_bundle(ProjectionDotBundle {
+                    projection_dot: ProjectionDot {},
+                    sprite: sprites.projection_dot.clone(),
+                });
+            }
+        }
+
+        let steps: Vec<Transform> = steps.into_iter().flatten().collect();
+
+        // FIXME seg faults here
+        for (i, (_, mut transform)) in dots.iter_mut().enumerate() {
+            *transform = steps[i];
+        }
     }
 }
 

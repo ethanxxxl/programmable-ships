@@ -16,5 +16,6 @@ fn main() {
         .add_system(systems::kinimatics_system.system())
         .add_system(systems::user_control_system.system())
         .add_system(systems::user_interface_system.system())
+        .add_system(systems::course_projection_system.system())
         .run();
 }
