@@ -201,7 +201,7 @@ pub mod systems {
             projection_dot: SpriteBundle {
                 sprite: Sprite::new(Vec2::new(2.0, 2.0)),
                 material: projection_dot_material.clone(),
-                transform: Transform::from_scale(Vec3::new(0.15, 0.15, 0.0)),
+                transform: Transform::from_scale(Vec3::new(1.0, 1.0, 0.0)),
                 ..Default::default()
             },
         };
@@ -368,12 +368,12 @@ pub mod systems {
                 
                 const ZOOM_SPEED: f32 = 0.1;
                 let scale_difference = (10.0 as f32).powf(event.y as f32 * ZOOM_SPEED);
-                
+
                 // adjust camera scaling
                 ortho.far += (1000.0 / (0.1 * event.y)).abs();
                 ortho.scale *= scale_difference;
                 camera.projection_matrix = ortho.get_projection_matrix();
-                
+
                 // scale visible entities
                 for e in entities.value.iter_mut() {
                     match transform_query.get_component_mut::<Transform>(e.entity) {
@@ -506,16 +506,16 @@ pub mod systems {
         } else if available_dots < total_dots {
             // spawn in missing dots
             for _ in 0..(total_dots-available_dots) {
-                commands.spawn_bundle(ProjectionDotBundle {
-                    projection_dot: ProjectionDot {},
-                    sprite: sprites.projection_dot.clone(),
-                });
+                commands.spawn()
+                    .insert(ProjectionDot {})
+                    .insert(Transform::default())
+                    .insert(GlobalTransform::default())
+                    .with_children(|p|{ p.spawn_bundle(sprites.projection_dot.clone()); } );
             }
         }
 
         let steps: Vec<Transform> = steps.into_iter().flatten().collect();
 
-        // FIXME seg faults here
         for (i, (_, mut transform)) in dots.iter_mut().enumerate() {
             *transform = steps[i];
         }
