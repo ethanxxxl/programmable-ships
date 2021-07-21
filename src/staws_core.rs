@@ -429,14 +429,13 @@ pub mod systems {
         let num_bods = entities.iter().count();
         let mut all_forces: Vec<Vec<Vec3>> = Vec::new();
         all_forces.reserve(num_bods);
+        for _ in 0..num_bods {
+            all_forces.push(Vec::new());
+        }
 
+        // account for force due to gravity
         const GRAVITATIONAL_CONSTANT: f32 = 6.67430e-11;
         for step in 0..num_seconds*step_precision {
-            // initialize a new vector for each k_bod
-            for _ in 0..num_bods {
-                all_forces.push(Vec::new());
-            }
-
             let dt = 1.0/(step_precision as f32);
 
             // calculate forces due to gravity
@@ -490,6 +489,7 @@ pub mod systems {
                 tran.translation = tran.translation + kin.velocity * dt;
 
                 steps[step].push(tran.clone());
+                all_forces[i].clear();
             }
         }
 
