@@ -1,21 +1,22 @@
 mod staws_core;
 
+mod ships;
+mod level;
+mod physics;
+mod user_interface;
+
 #[allow(dead_code)]
 use bevy::prelude::*;
 use bevy_inspector_egui::WorldInspectorPlugin;
-use crate::staws_core::{systems, user_interface};
 
 fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(WorldInspectorPlugin::new())
         .insert_resource(ClearColor(Color::rgb_u8(0,0,0)))
-        .add_startup_system(systems::setup_system.system())
-        .add_startup_system(user_interface::init_ui.system())
-        .add_system(user_interface::course_projection_system.system())
-        .add_system(systems::kinimatics_system.system())
-        .add_system(systems::user_control_system.system())
-        .add_system(systems::user_interface_system.system())
-        .add_system(systems::course_projection_system.system())
+        .add_plugin(ships::ShipsPlugin)
+        .add_plugin(level::LevelPlugin)
+        .add_plugin(physics::PhysicsPlugin)
+        .add_plugin(user_interface::UserInterfacePlugin)
         .run();
 }
