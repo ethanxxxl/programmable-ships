@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use super::ships::{Engine, Throttle};
+use bevy::prelude::*;
 
 use bevy_inspector_egui::Inspectable;
 
@@ -7,17 +7,15 @@ pub struct PhysicsPlugin;
 
 impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app
-            .add_system(kinimatics_system.system());
+        app.add_system(kinimatics_system.system());
     }
 }
 
-/// while the game is 2D, the z dimension in the velocity and
-///  acceleration fields will be either ignored or 0.
-///  if/when the game becomes 3D, this will provide an easy transition.
+/// :COMPONENT: For entities that abide by the laws of ~~physics~~ my choosing.
+/// Note, currently this is a 2D game, therefore the Z field is not to be used.
+/// A future version of the game might open up a third dimension.
 #[derive(Inspectable, Default, Clone, Copy)]
 pub struct Kinimatics {
-    // kinimatic stuff
     #[inspectable(label = "v")]
     pub velocity: Vec3,
     #[inspectable(label = "a")]
@@ -27,6 +25,9 @@ pub struct Kinimatics {
     pub mass: f32,
 }
 
+/// :BUNDLE: Provided for convenience. the Kinimatics component doesn't track
+/// the transform of the entity, so this bundle should be used when creating
+/// a new entity.
 #[derive(Bundle, Default)]
 pub struct KinimaticsBundle {
     pub transform: Transform,
@@ -73,6 +74,8 @@ impl KinimaticsBundle {
     }
 }
 
+/// :SYSTEM: Iterates through all of the kinimatic entities, and simulates physics
+/// on them, updating their transforms when it is done.
 pub fn kinimatics_system(
     mut k_bods: Query<(&mut Kinimatics, &mut Transform, Option<&Engine>)>,
     time: Res<Time>,

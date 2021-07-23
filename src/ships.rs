@@ -1,27 +1,25 @@
+use super::physics::KinimaticsBundle;
 use bevy::prelude::*;
-use super::physics::{Kinimatics, KinimaticsBundle};
-
-use bevy_inspector_egui::Inspectable;
 
 pub struct ShipsPlugin;
 
 impl Plugin for ShipsPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app
-            .add_startup_system(startup_system.system())
+        app.add_startup_system(startup_system.system())
             .add_system(user_control_system.system());
     }
 }
 
+/// :COMPONENT: Temporary marker compenent
 pub struct Controlled;
 
-/// an engine is either always on max burn,
-///      or is able to be throttled. the floating point must
-///      be on the range [0,1]. Values that fall outside this range
-///      do not have any phyisical meaning.
-#[derive(Inspectable, Clone, Copy)]
+/// :COMPONENT: Describes how an engine is controlled.
+#[derive(Clone, Copy)]
 pub enum Throttle {
+    /// Either all on (true) or all off (false).
     Fixed(bool),
+    /// Must be on the range \[0,1\]. Numbers outside of this region don't
+    /// have any physical meaning.
     Variable(f32),
 }
 
@@ -31,16 +29,22 @@ impl Default for Throttle {
     }
 }
 
-#[derive(Inspectable, Default, Clone, Copy)]
+/// :COMPONENT: An engine which can be attached a ship.
+/// The physics plugin looks for Engine components, and will apply the
+/// applicable forces on its entity.
+#[derive(Default, Clone)]
 pub struct Engine {
     pub fuel: f32,
-    pub max_thrust: f32, // units of force
+    pub max_thrust: f32,
+    /// Units of force
     pub throttle: Throttle,
 }
 
+/// :COMPONENT: Marker component for ships (in general).
 #[derive(Default)]
 pub struct Ship;
 
+/// :BUNDLE: Provided for convenience. Describes a generic ship.
 #[derive(Bundle, Default)]
 pub struct ShipBundle {
     pub ship: Ship,
@@ -50,12 +54,16 @@ pub struct ShipBundle {
     pub kinimatics_bundle: KinimaticsBundle,
 }
 
+/// :COMPONENT: Missiles which can be spawned in from ships.
+/// When launched, if they have a target, the missile will
+/// do its best to navigate to that target.
 #[derive(Default)]
 pub struct Missile {
     pub target: Option<Entity>,
     pub blast_radius: f32,
 }
 
+/// :BUNDLE: Provided for convenience. Describes a generic missile.
 #[derive(Bundle, Default)]
 pub struct MissileBundle {
     pub missile: Missile,
@@ -65,6 +73,7 @@ pub struct MissileBundle {
     pub kinimatics_bundle: KinimaticsBundle,
 }
 
+/// Resource which holds all the sprites used to represent ships on the display.
 #[derive(Clone)]
 struct ShipSprites {
     generic_ship: SpriteBundle,
@@ -114,6 +123,7 @@ fn startup_system(
         });
 }
 
+/// Temporary system which give the user control over a ship.
 fn user_control_system(
     query: Query<(&mut Ship, &mut Transform, &mut Engine), With<Controlled>>,
     input: Res<Input<KeyCode>>,

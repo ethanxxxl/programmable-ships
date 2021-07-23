@@ -1,20 +1,21 @@
-use bevy::prelude::*;
 use super::physics::KinimaticsBundle;
+use bevy::prelude::*;
 
 pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app
-            .add_startup_system(startup_system.system());
+        app.add_startup_system(startup_system.system());
     }
 }
 
+/// :COMPONENT: An astronomical body, such as a planet, moon, star, etc.
 #[derive(Default)]
 pub struct AstroObject {
     pub radius: f32,
 }
 
+/// :BUNDLE: Provided for convenience. Describes a generic astronomical body.
 #[derive(Bundle, Default)]
 pub struct AstroObjectBundle {
     pub astro_object: AstroObject,
@@ -22,6 +23,8 @@ pub struct AstroObjectBundle {
     pub kinimatics_bundle: KinimaticsBundle,
 }
 
+/// Resource which contains the sprites used to represents various astronomical
+/// bodies on the display.
 #[derive(Clone)]
 struct LevelSprites {
     generic_planet: SpriteBundle,
