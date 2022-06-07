@@ -4,13 +4,17 @@ use bevy::prelude::*;
 pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(startup_system.system());
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(startup_system);
+    }
+
+    fn name(&self) -> &str {
+        std::any::type_name::<Self>()
     }
 }
 
 /// :COMPONENT: An astronomical body, such as a planet, moon, star, etc.
-#[derive(Default)]
+#[derive(Component, Default)]
 pub struct AstroObject {
     pub radius: f32,
 }
@@ -35,20 +39,11 @@ fn startup_system(
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: ResMut<AssetServer>,
 ) {
-    let planet_texture: Handle<Texture> = asset_server.load("../assets/planet.png");
-
-    let planet_material = ColorMaterial {
-        color: Color::rgb(0.0, 1.0, 0.0),
-        texture: Some(planet_texture),
-    };
-
-    let planet_material = materials.add(planet_material);
-
     let sprite_resource = LevelSprites {
         generic_planet: SpriteBundle {
-            sprite: Sprite::new(Vec2::new(20.0, 20.0)),
-            material: planet_material.clone(),
+            sprite: Sprite { custom_size: Some(Vec2::new(20.0, 20.0)), ..Default::default()},
             transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
+            texture: asset_server.load("../assets/planet.png"),
             ..Default::default()
         },
     };

@@ -6,15 +6,15 @@ use bevy_inspector_egui::Inspectable;
 pub struct PhysicsPlugin;
 
 impl Plugin for PhysicsPlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        app.add_system(kinimatics_system.system());
+    fn build(&self, app: &mut App) {
+        app.add_system(kinimatics_system);
     }
 }
 
 /// :COMPONENT: For entities that abide by the laws of ~~physics~~ my choosing.
 /// Note, currently this is a 2D game, therefore the Z field is not to be used.
 /// A future version of the game might open up a third dimension.
-#[derive(Inspectable, Default, Clone, Copy)]
+#[derive(Inspectable, Default, Clone, Copy, Component)]
 pub struct Kinimatics {
     #[inspectable(label = "v")]
     pub velocity: Vec3,

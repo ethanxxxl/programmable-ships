@@ -1,20 +1,23 @@
+use std::clone;
+
 use super::physics::KinimaticsBundle;
 use bevy::prelude::*;
 
 pub struct ShipsPlugin;
 
 impl Plugin for ShipsPlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(startup_system.system())
-            .add_system(user_control_system.system());
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(startup_system)
+            .add_system(user_control_system);
     }
 }
 
 /// :COMPONENT: Temporary marker compenent
+#[derive(Component)]
 pub struct Controlled;
 
 /// :COMPONENT: Describes how an engine is controlled.
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 pub enum Throttle {
     /// Either all on (true) or all off (false).
     Fixed(bool),
@@ -32,7 +35,7 @@ impl Default for Throttle {
 /// :COMPONENT: An engine which can be attached a ship.
 /// The physics plugin looks for Engine components, and will apply the
 /// applicable forces on its entity.
-#[derive(Default, Clone)]
+#[derive(Component, Default, Clone)]
 pub struct Engine {
     pub fuel: f32,
     pub max_thrust: f32,
@@ -41,7 +44,7 @@ pub struct Engine {
 }
 
 /// :COMPONENT: Marker component for ships (in general).
-#[derive(Default)]
+#[derive(Default, Component)]
 pub struct Ship;
 
 /// :BUNDLE: Provided for convenience. Describes a generic ship.
@@ -57,7 +60,7 @@ pub struct ShipBundle {
 /// :COMPONENT: Missiles which can be spawned in from ships.
 /// When launched, if they have a target, the missile will
 /// do its best to navigate to that target.
-#[derive(Default)]
+#[derive(Default, Component)]
 pub struct Missile {
     pub target: Option<Entity>,
     pub blast_radius: f32,
@@ -84,20 +87,11 @@ fn startup_system(
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: ResMut<AssetServer>,
 ) {
-    let ship_texture: Handle<Texture> = asset_server.load("../assets/ship_1.png");
-
-    let ship_material = ColorMaterial {
-        color: Color::rgb(1.0, 1.0, 1.0),
-        texture: Some(ship_texture),
-    };
-
-    let ship_material = materials.add(ship_material);
-
     let sprite_resource = ShipSprites {
         generic_ship: SpriteBundle {
-            sprite: Sprite::new(Vec2::new(20.0, 20.0)),
-            material: ship_material.clone(),
+            sprite: Sprite { custom_size: Some(Vec2::new(20.0, 20.0)), ..Default::default() },
             transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
+            texture: asset_server.load("../assets/ship_1.png"),
             ..Default::default()
         },
     };
@@ -125,7 +119,7 @@ fn startup_system(
 
 /// Temporary system which give the user control over a ship.
 fn user_control_system(
-    query: Query<(&mut Ship, &mut Transform, &mut Engine), With<Controlled>>,
+    mut query: Query<(&mut Ship, &mut Transform, &mut Engine), With<Controlled>>,
     input: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {

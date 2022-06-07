@@ -1,7 +1,8 @@
 use bevy::{
     input::mouse::{MouseButton, MouseMotion, MouseWheel},
     prelude::*,
-    render::camera::{Camera, CameraProjection, OrthographicProjection, VisibleEntities},
+    render::camera::{Camera, CameraProjection, OrthographicProjection, Camera2d},
+    render::view::VisibleEntities,
 };
 
 use super::physics::{Kinimatics, KinimaticsBundle};
@@ -10,15 +11,16 @@ use super::ships::{Engine, Throttle};
 pub struct UserInterfacePlugin;
 
 impl Plugin for UserInterfacePlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(startup_system.system())
-            .add_system(course_projection_system.system())
-            .add_system(user_interface_system.system())
-            .add_startup_system(init_ui.system());
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(startup_system)
+            .add_system(course_projection_system)
+            .add_system(user_interface_system);
+            //.add_startup_system(init_ui);
     }
 }
 
 /// :COMPONENT: Marker component
+#[derive(Component)]
 pub struct ProjectionDot;
 
 /// :BUNDLE: Provided for convenience.
@@ -42,20 +44,14 @@ fn startup_system(
 ) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 
-    let projection_dot_texture: Handle<Texture> = asset_server.load("../assets/dot.png");
-
-    let projection_dot_material = ColorMaterial {
-        color: Color::rgb_u8(199, 199, 199),
-        texture: Some(projection_dot_texture),
-    };
-
-    let projection_dot_material = materials.add(projection_dot_material);
-
     let sprite_resource = UISprites {
         projection_dot: SpriteBundle {
-            sprite: Sprite::new(Vec2::new(2.0, 2.0)),
-            material: projection_dot_material.clone(),
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(2.0, 2.0)),
+                color: Color::rgb_u8(199, 199, 199),
+                ..Default::default() },
             transform: Transform::from_scale(Vec3::new(1.0, 1.0, 0.0)),
+            texture: asset_server.load("../assets/dot.png"),
             ..Default::default()
         },
     };
@@ -70,12 +66,12 @@ fn startup_system(
 /// because of the vast distances of outer space, sprites would be way to small to see if they
 /// zoomed to scale.
 fn user_interface_system(
-    cam_query: Query<(
+    mut cam_query: Query<(
         &mut OrthographicProjection,
         &mut Transform,
         &mut Camera,
-        &mut VisibleEntities,
-    )>,
+        &mut VisibleEntities
+    ), With<Camera2d>>,
     mut transform_query: Query<&mut Transform, (With<Sprite>, Without<Camera>)>,
     mouse_state: Res<Input<MouseButton>>,
     mut motion_evr: EventReader<MouseMotion>,
@@ -83,13 +79,7 @@ fn user_interface_system(
 ) {
     // handle zooming when the user scrolls
     for event in wheel_evr.iter() {
-        cam_query.for_each_mut(|(mut ortho, _transform, mut camera, mut entities)| {
-            // filter out extraneous cameras
-            if camera.name != Some(bevy::render::render_graph::base::camera::CAMERA_2D.to_string())
-            {
-                return;
-            }
-
+        for (mut ortho, _transform, mut camera, mut entities) in cam_query.iter_mut() {
             const ZOOM_SPEED: f32 = 0.1;
             let scale_difference = (10.0 as f32).powf(event.y as f32 * ZOOM_SPEED);
 
@@ -99,30 +89,26 @@ fn user_interface_system(
             camera.projection_matrix = ortho.get_projection_matrix();
 
             // scale visible entities
-            for e in entities.value.iter_mut() {
-                match transform_query.get_component_mut::<Transform>(e.entity) {
+            for &mut e in entities.entities.iter_mut() {
+                match transform_query.get_component_mut::<Transform>(e) {
                     Ok(mut t) => {
                         t.scale *= Vec3::ONE * scale_difference;
                     }
                     Err(_) => (),
                 };
             }
-        });
+        }
     }
 
     // handle paning when the user middle clicks and drags
-    cam_query.for_each_mut(|(op, mut t, c, _e)| {
-        // make sure we are using the right camera
-        if c.name != Some(bevy::render::render_graph::base::camera::CAMERA_2D.to_string()) {
-            return;
-        }
 
+    for (mut op, mut t, c, _e) in cam_query.iter_mut() {
         if mouse_state.pressed(MouseButton::Middle) {
             motion_evr
                 .iter()
                 .for_each(|m| t.translation += op.scale * Vec3::new(-m.delta.x, m.delta.y, 0.0));
         }
-    })
+    }
 }
 
 /// :SYSTEM: Projects the motion of all kinimatic bodies.
@@ -259,6 +245,7 @@ pub fn course_projection_system(
 ///
 /// Soon™ this will be unified into normal [startup_system()] system. Currently,
 /// this builds the UI.
+/*
 pub fn init_ui(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -331,11 +318,12 @@ pub fn init_ui(
                 });
         });
 }
+*/
 
 /// :COMPONENT: Material Handles for different button states.
 ///
 /// This describes the bare bones style of a button or group of buttons.
-#[derive(Clone)]
+#[derive(Clone, Component)]
 pub struct ButtonStyle {
     material_normal: Handle<ColorMaterial>,
     material_hovered: Handle<ColorMaterial>,
@@ -344,6 +332,7 @@ pub struct ButtonStyle {
     text_style: TextStyle,
 }
 
+#[derive(Component)]
 #[allow(dead_code)]
 pub struct CourseProjectionButton {
     is_on: bool,
@@ -406,6 +395,7 @@ pub fn button_system(
 
 /// Helper function to easily create buttons.
 use bevy::ecs::system::EntityCommands;
+/*
 fn create_button<'a, 'b, 'c>(
     parent: &'c mut EntityCommands<'a, 'b>,
     style: &ButtonStyle,
@@ -423,3 +413,4 @@ fn create_button<'a, 'b, 'c>(
             });
         })
 }
+*/
