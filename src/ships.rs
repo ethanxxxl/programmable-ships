@@ -3,6 +3,7 @@ use std::clone;
 use super::physics::KinimaticsBundle;
 use bevy::prelude::*;
 
+use bevy_inspector_egui::Inspectable;
 pub struct ShipsPlugin;
 
 impl Plugin for ShipsPlugin {
@@ -17,7 +18,8 @@ impl Plugin for ShipsPlugin {
 pub struct Controlled;
 
 /// :COMPONENT: Describes how an engine is controlled.
-#[derive(Component, Clone, Copy)]
+#[derive(Reflect, Component, Clone, Copy)]
+#[reflect(Component)]
 pub enum Throttle {
     /// Either all on (true) or all off (false).
     Fixed(bool),
@@ -35,7 +37,8 @@ impl Default for Throttle {
 /// :COMPONENT: An engine which can be attached a ship.
 /// The physics plugin looks for Engine components, and will apply the
 /// applicable forces on its entity.
-#[derive(Component, Default, Clone)]
+#[derive(Reflect, Component, Default, Clone)]
+#[reflect(Component)]
 pub struct Engine {
     pub fuel: f32,
     pub max_thrust: f32,
@@ -44,7 +47,8 @@ pub struct Engine {
 }
 
 /// :COMPONENT: Marker component for ships (in general).
-#[derive(Default, Component)]
+#[derive(Reflect, Default, Component)]
+#[reflect(Component)]
 pub struct Ship;
 
 /// :BUNDLE: Provided for convenience. Describes a generic ship.
@@ -60,7 +64,8 @@ pub struct ShipBundle {
 /// :COMPONENT: Missiles which can be spawned in from ships.
 /// When launched, if they have a target, the missile will
 /// do its best to navigate to that target.
-#[derive(Default, Component)]
+#[derive(Reflect, Default, Component)]
+#[reflect(Component)]
 pub struct Missile {
     pub target: Option<Entity>,
     pub blast_radius: f32,
@@ -89,7 +94,10 @@ fn startup_system(
 ) {
     let sprite_resource = ShipSprites {
         generic_ship: SpriteBundle {
-            sprite: Sprite { custom_size: Some(Vec2::new(20.0, 20.0)), ..Default::default() },
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(20.0, 20.0)),
+                ..Default::default()
+            },
             transform: Transform::from_scale(Vec3::new(0.75, 0.75, 0.0)),
             texture: asset_server.load("../assets/ship_1.png"),
             ..Default::default()

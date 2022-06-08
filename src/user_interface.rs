@@ -1,7 +1,7 @@
 use bevy::{
     input::mouse::{MouseButton, MouseMotion, MouseWheel},
     prelude::*,
-    render::camera::{Camera, CameraProjection, OrthographicProjection, Camera2d},
+    render::camera::{Camera, Camera2d, CameraProjection, OrthographicProjection},
     render::view::VisibleEntities,
 };
 
@@ -14,8 +14,7 @@ impl Plugin for UserInterfacePlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(startup_system)
             .add_system(user_interface_system)
-            .add_system(course_projection_system)
-            ;
+            .add_system(course_projection_system);
     }
 }
 
@@ -37,10 +36,7 @@ pub struct UISprites {
     projection_dot: SpriteBundle,
 }
 
-fn startup_system(
-    mut commands: Commands,
-    asset_server: ResMut<AssetServer>,
-) {
+fn startup_system(mut commands: Commands, asset_server: ResMut<AssetServer>) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 
     let sprite_resource = UISprites {
@@ -48,7 +44,8 @@ fn startup_system(
             sprite: Sprite {
                 custom_size: Some(Vec2::new(2.0, 2.0)),
                 color: Color::rgb_u8(199, 199, 199),
-                ..Default::default() },
+                ..Default::default()
+            },
             transform: Transform::from_scale(Vec3::new(1.0, 1.0, 0.0)),
             texture: asset_server.load("../assets/dot.png"),
             ..Default::default()
@@ -65,12 +62,15 @@ fn startup_system(
 /// because of the vast distances of outer space, sprites would be way to small to see if they
 /// zoomed to scale.
 fn user_interface_system(
-    mut cam_query: Query<(
-        &mut OrthographicProjection,
-        &mut Transform,
-        &mut Camera,
-        &mut VisibleEntities
-    ), With<Camera2d>>,
+    mut cam_query: Query<
+        (
+            &mut OrthographicProjection,
+            &mut Transform,
+            &mut Camera,
+            &mut VisibleEntities,
+        ),
+        With<Camera2d>,
+    >,
     mut transform_query: Query<&mut Transform, (With<Sprite>, Without<Camera>)>,
     mouse_state: Res<Input<MouseButton>>,
     mut motion_evr: EventReader<MouseMotion>,
@@ -127,8 +127,8 @@ pub fn course_projection_system(
         })
         .collect();
 
-    let num_seconds = 25; // number of seconds to look ahead
-    let step_precision = 15; // steps/second
+    let num_seconds = 1; // number of seconds to look ahead
+    let step_precision = 5; // steps/second
 
     let mut steps: Vec<Vec<(Kinimatics, Transform, Option<Engine>)>> = Vec::new();
     steps.reserve(num_seconds * step_precision);
@@ -146,7 +146,7 @@ pub fn course_projection_system(
     const GRAVITATIONAL_CONSTANT: f32 = 6.67430e-11;
     let dt = 1.0 / (step_precision as f32);
     for step in 1..num_seconds * step_precision {
-        steps.push(steps[step-1].clone());
+        steps.push(steps[step - 1].clone());
 
         // calculate forces for each body
         for (i, bod1) in steps[step].iter().enumerate() {
@@ -154,7 +154,7 @@ pub fn course_projection_system(
 
             // add forces due to gravity
             steps[step]
-                .split_at(i+1)
+                .split_at(i + 1)
                 .1
                 .iter()
                 .enumerate()
@@ -170,18 +170,17 @@ pub fn course_projection_system(
                     let d2 = (t1.translation - t2.translation).normalize() * force_mag;
 
                     forces[i] += d1;
-                    forces[i+j+1] += d2;
+                    forces[i + j + 1] += d2;
                 });
 
             // handle force from ship engine
             if let Some(t) = engine {
-                forces[i] +=
-                    t1.rotation.mul_vec3(Vec3::Y)
-                        * match t.throttle {
-                            Throttle::Fixed(true) => t.max_thrust,
-                            Throttle::Fixed(false) => 0.0,
-                            Throttle::Variable(amount) => amount * t.max_thrust,
-                        };
+                forces[i] += t1.rotation.mul_vec3(Vec3::Y)
+                    * match t.throttle {
+                        Throttle::Fixed(true) => t.max_thrust,
+                        Throttle::Fixed(false) => 0.0,
+                        Throttle::Variable(amount) => amount * t.max_thrust,
+                    };
             }
         }
 
@@ -227,11 +226,7 @@ pub fn course_projection_system(
         }
     }
 
-    let steps: Vec<Transform> = steps
-        .into_iter()
-        .flatten()
-        .map(|k_bod| k_bod.1)
-        .collect();
+    let steps: Vec<Transform> = steps.into_iter().flatten().map(|k_bod| k_bod.1).collect();
 
     for (i, (_, mut transform)) in dots.iter_mut().enumerate() {
         *transform = steps[i];
