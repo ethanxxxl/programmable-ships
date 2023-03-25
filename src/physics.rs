@@ -1,7 +1,5 @@
 use super::ships::{Engine, Throttle};
-use bevy::prelude::*;
-
-use bevy_inspector_egui::Inspectable;
+use bevy::{prelude::*, render::render_resource::AsBindGroupShaderType};
 
 pub struct PhysicsPlugin;
 
@@ -31,9 +29,9 @@ pub struct Kinimatics {
 /// a new entity.
 #[derive(Bundle, Default)]
 pub struct KinimaticsBundle {
-    pub transform: Transform,
-    pub _global_transform: GlobalTransform,
     pub kinimatics: Kinimatics,
+    #[bundle]
+    pub spatial: SpatialBundle,
 }
 
 impl KinimaticsBundle {
@@ -43,7 +41,7 @@ impl KinimaticsBundle {
 
     #[allow(dead_code)]
     pub fn insert_transform(mut self, t: Transform) -> Self {
-        self.transform = t;
+        self.spatial.transform = t;
         self
     }
 
@@ -54,7 +52,7 @@ impl KinimaticsBundle {
     }
 
     pub fn insert_translation(mut self, t: Vec3) -> Self {
-        self.transform.translation = t;
+        self.spatial.transform.translation = t;
         self
     }
 

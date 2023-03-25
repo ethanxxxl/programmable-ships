@@ -1,7 +1,7 @@
 use bevy::{
     input::mouse::{MouseButton, MouseMotion, MouseWheel},
     prelude::*,
-    render::camera::{Camera, Camera2d, CameraProjection, OrthographicProjection},
+    render::camera::Camera,
     render::view::VisibleEntities,
 };
 
@@ -19,11 +19,11 @@ impl Plugin for UserInterfacePlugin {
 }
 
 /// :COMPONENT: Marker component
-#[derive(Component)]
+#[derive(Default, Component)]
 pub struct ProjectionDot;
 
 /// :BUNDLE: Provided for convenience.
-#[derive(Bundle)]
+#[derive(Default, Bundle)]
 pub struct ProjectionDotBundle {
     pub projection_dot: ProjectionDot,
 
@@ -32,12 +32,13 @@ pub struct ProjectionDotBundle {
 }
 
 /// Resource which holds all the sprites that will be used in both the display and the UI.
+#[derive(Resource)]
 pub struct UISprites {
     projection_dot: SpriteBundle,
 }
 
 fn startup_system(mut commands: Commands, asset_server: ResMut<AssetServer>) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn(Camera2dBundle::new_with_far(1000.0));
 
     let sprite_resource = UISprites {
         projection_dot: SpriteBundle {
@@ -84,7 +85,8 @@ fn user_interface_system(
 
             // adjust camera scaling
             ortho.scale *= scale_difference;
-            camera.projection_matrix = ortho.get_projection_matrix();
+            //camera.projection_matrix = ortho.get_projection_matrix();
+
 
             // scale visible entities
             for mut t in transform_query.iter_mut() {
@@ -216,12 +218,10 @@ pub fn course_projection_system(
         // spawn in missing dots
         for _ in 0..(total_dots - available_dots) {
             commands
-                .spawn()
-                .insert(ProjectionDot {})
-                .insert(Transform::default())
-                .insert(GlobalTransform::default())
+                .spawn(ProjectionDotBundle { ..Default::default()
+                })
                 .with_children(|p| {
-                    p.spawn_bundle(sprites.projection_dot.clone());
+                    p.spawn(sprites.projection_dot.clone());
                 });
         }
     }
@@ -315,7 +315,7 @@ pub fn init_ui(
 /// :COMPONENT: Material Handles for different button states.
 ///
 /// This describes the bare bones style of a button or group of buttons.
-#[derive(Clone, Component)]
+#[derive(Clone, Resource)]
 pub struct ButtonStyle {
     material_normal: Handle<ColorMaterial>,
     material_hovered: Handle<ColorMaterial>,

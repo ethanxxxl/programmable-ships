@@ -1,9 +1,6 @@
-use std::clone;
-
 use super::physics::KinimaticsBundle;
 use bevy::prelude::*;
 
-use bevy_inspector_egui::Inspectable;
 pub struct ShipsPlugin;
 
 impl Plugin for ShipsPlugin {
@@ -82,7 +79,7 @@ pub struct MissileBundle {
 }
 
 /// Resource which holds all the sprites used to represent ships on the display.
-#[derive(Clone)]
+#[derive(Clone, Resource)]
 struct ShipSprites {
     generic_ship: SpriteBundle,
 }
@@ -108,8 +105,7 @@ fn startup_system(
 
     // Add a ship (temporary)
     commands
-        .spawn()
-        .insert_bundle(ShipBundle {
+        .spawn(ShipBundle {
             kinimatics_bundle: KinimaticsBundle::build()
                 .insert_mass(100.0)
                 .insert_translation(Vec3::new(500.0, 500.0, 0.0)),
@@ -121,7 +117,7 @@ fn startup_system(
         })
         .insert(Controlled {})
         .with_children(|p| {
-            p.spawn_bundle(sprite_resource.generic_ship.clone());
+            p.spawn(sprite_resource.generic_ship.clone());
         });
 }
 

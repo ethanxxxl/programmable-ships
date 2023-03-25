@@ -30,7 +30,7 @@ pub struct AstroObjectBundle {
 
 /// Resource which contains the sprites used to represents various astronomical
 /// bodies on the display.
-#[derive(Clone)]
+#[derive(Clone, Resource)]
 struct LevelSprites {
     generic_planet: SpriteBundle,
 }
@@ -55,15 +55,14 @@ fn startup_system(
     commands.insert_resource(sprite_resource.clone());
 
     fn spawn_planet(
-        mut commands: &mut Commands,
+        commands: &mut Commands,
         sprite_resource: &LevelSprites,
         mass: f32,
         translation: Vec3,
         velocity: Vec3,
     ) {
         commands
-            .spawn()
-            .insert_bundle(AstroObjectBundle {
+            .spawn(AstroObjectBundle {
                 kinimatics_bundle: KinimaticsBundle::build()
                     .insert_mass(mass)
                     .insert_translation(translation)
@@ -71,7 +70,7 @@ fn startup_system(
                 ..Default::default()
             })
             .with_children(|p| {
-                p.spawn_bundle(sprite_resource.generic_planet.clone());
+                p.spawn(sprite_resource.generic_planet.clone());
             });
     }
 

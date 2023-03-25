@@ -10,5 +10,5 @@ edition = "2021"
 channel = "nightly"
 
 [dependencies]
-bevy = { version = "0.7.0", features = ["dynamic"] }
-bevy-inspector-egui = "0.11.0"
+bevy = { version = "0.10", features = ["dynamic_linking"] }
+bevy-inspector-egui = "0.18.0"

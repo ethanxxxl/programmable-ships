@@ -5,13 +5,13 @@ mod user_interface;
 
 #[allow(dead_code)]
 use bevy::prelude::*;
-use bevy_inspector_egui::{WorldInspectorPlugin, RegisterInspectable};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
 
-        .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(WorldInspectorPlugin::default())
         .register_type::<physics::Kinimatics>()
         .register_type::<ships::Ship>()
         .register_type::<ships::Engine>()
